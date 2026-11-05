@@ -1,0 +1,6 @@
+{
+  "name": "KIVORA",
+  "description": "Souveräne Social-Media-, Aufklärungs- und Schutzplattform mit ICE Ragotti KI, ID-Austria Login, verschlüsseltem Chat, Videostudio, Livestream und Jugendschutz.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

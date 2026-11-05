@@ -1,0 +1,952 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Global Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isVerifiedAccount() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+    function isAdmin() {
+      return isVerifiedAccount() && (
+        request.auth.token.email == 'ice.ragotti@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isAdultUser() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ageGroup == 'adult';
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'handle', 'verifiedBadge',
+          'idAustriaVerified', 'ageGroup', 'subscriptionTier',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'displayName', 'handle', 'bio', 'avatarUrl',
+          'verifiedBadge', 'idAustriaVerified', 'ageGroup',
+          'subscriptionTier', 'topics', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
+        data.handle is string && data.handle.size() >= 2 && data.handle.size() <= 32 &&
+        data.handle.matches('^[a-zA-Z0-9_.]+$') &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 280)) &&
+        (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+        data.verifiedBadge in ['none', 'id_austria', 'creator', 'protection_org'] &&
+        data.idAustriaVerified is bool &&
+        data.ageGroup in ['minor', 'adult'] &&
+        data.subscriptionTier in ['free', 'aktiv_verified', 'schutz_pro'] &&
+        (!('topics' in data) || (data.topics is list && data.topics.size() <= 10 && (data.topics.size() == 0 || data.topics[0] is string))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateIdentity(data) {
+      return data.keys().hasAll(['uid', 'birthYear', 'dsgvoConsent', 'childSafetyShield', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'uid', 'email', 'idAustriaBpkHash', 'birthYear', 'dsgvoConsent',
+          'dsgvoConsentVersion', 'dsgvoConsentTimestamp', 'analyticsOptIn',
+          'childSafetyShield', 'protectionFocus', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 160)) &&
+        (!('idAustriaBpkHash' in data) || (data.idAustriaBpkHash is string && data.idAustriaBpkHash.size() <= 128)) &&
+        data.birthYear is int && data.birthYear >= 1910 && data.birthYear <= 2026 &&
+        data.dsgvoConsent is bool &&
+        (!('dsgvoConsentVersion' in data) || (data.dsgvoConsentVersion is string && data.dsgvoConsentVersion.size() <= 40)) &&
+        (!('dsgvoConsentTimestamp' in data) || (data.dsgvoConsentTimestamp is string && data.dsgvoConsentTimestamp.size() <= 64)) &&
+        (!('analyticsOptIn' in data) || data.analyticsOptIn is bool) &&
+        data.childSafetyShield is bool &&
+        (!('protectionFocus' in data) || (data.protectionFocus is list && data.protectionFocus.size() <= 6 && (data.protectionFocus.size() == 0 || data.protectionFocus[0] is string))) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll([
+          'id', 'authorId', 'authorName', 'authorHandle', 'authorVerified',
+          'topic', 'title', 'body', 'isAdultOnly', 'visibility',
+          'likesCount', 'commentsCount', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'authorId', 'authorName', 'authorHandle', 'authorVerified',
+          'topic', 'title', 'body', 'mediaUrl', 'isAdultOnly', 'visibility',
+          'likesCount', 'commentsCount', 'aiFactNote', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.authorId) &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+        data.authorHandle is string && data.authorHandle.size() >= 2 && data.authorHandle.size() <= 32 &&
+        data.authorVerified in ['none', 'id_austria', 'creator', 'protection_org'] &&
+        data.topic in [
+          'Kinderschutz', 'Tierschutz', 'Frauenschutz', 'Männerschutz',
+          'Politische Aufklärung', 'Geopolitik', 'Blackout & Krisenvorsorge',
+          'Soziale Gerechtigkeit'
+        ] &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+        data.body is string && data.body.size() >= 1 && data.body.size() <= 3000 &&
+        (!('mediaUrl' in data) || (data.mediaUrl is string && data.mediaUrl.size() <= 500)) &&
+        data.isAdultOnly == false &&
+        data.visibility == 'public' &&
+        data.likesCount is int && data.likesCount >= 0 &&
+        data.commentsCount is int && data.commentsCount >= 0 &&
+        (!('aiFactNote' in data) || (data.aiFactNote is string && data.aiFactNote.size() <= 600)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidComment(data, postId) {
+      return data.keys().hasAll(['id', 'postId', 'authorId', 'authorName', 'text', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'postId', 'authorId', 'authorName', 'text', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.postId == postId &&
+        isValidId(data.authorId) &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 1000 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidReel(data) {
+      return data.keys().hasAll([
+          'id', 'authorId', 'authorName', 'topic', 'title',
+          'filterPreset', 'isAdultOnly', 'visibility', 'likesCount',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'authorId', 'authorName', 'topic', 'title',
+          'coverUrl', 'filterPreset', 'captionSummary', 'isAdultOnly',
+          'visibility', 'likesCount', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.authorId) &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+        data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 60 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+        (!('coverUrl' in data) || (data.coverUrl is string && data.coverUrl.size() <= 500)) &&
+        data.filterPreset is string && data.filterPreset.size() >= 1 && data.filterPreset.size() <= 60 &&
+        (!('captionSummary' in data) || (data.captionSummary is string && data.captionSummary.size() <= 600)) &&
+        data.isAdultOnly == false &&
+        data.visibility == 'public' &&
+        data.likesCount is int && data.likesCount >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStory(data) {
+      return data.keys().hasAll([
+          'id', 'authorId', 'authorName', 'topic', 'headline',
+          'isAdultOnly', 'visibility', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'authorId', 'authorName', 'topic', 'headline',
+          'mediaUrl', 'isAdultOnly', 'visibility', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.authorId) &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+        data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 60 &&
+        data.headline is string && data.headline.size() >= 1 && data.headline.size() <= 160 &&
+        (!('mediaUrl' in data) || (data.mediaUrl is string && data.mediaUrl.size() <= 500)) &&
+        data.isAdultOnly == false &&
+        data.visibility == 'public' &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidVideoProject(data) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'title', 'aspectRatio', 'filterPreset',
+          'filterSettings', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'title', 'aspectRatio', 'filterPreset',
+          'filterSettings', 'aiRecommendedFilter', 'captions',
+          'clips', 'exportFormats', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.aspectRatio in ['9:16', '1:1', '16:9', '4:5'] &&
+        data.filterPreset is string && data.filterPreset.size() >= 1 && data.filterPreset.size() <= 60 &&
+        data.filterSettings is map &&
+        data.filterSettings.keys().hasOnly(['brightness', 'contrast', 'saturation', 'warmth', 'vignette']) &&
+        (!('aiRecommendedFilter' in data) || (data.aiRecommendedFilter is string && data.aiRecommendedFilter.size() <= 120)) &&
+        (!('captions' in data) || (data.captions is list && data.captions.size() <= 50)) &&
+        (!('clips' in data) || (data.clips is list && data.clips.size() <= 20)) &&
+        (!('exportFormats' in data) || (data.exportFormats is list && data.exportFormats.size() <= 10 && (data.exportFormats.size() == 0 || data.exportFormats[0] is string))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'peerId', 'title', 'channelScope',
+          'keyFingerprint', 'ephemeralSeconds', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'peerId', 'title', 'channelScope',
+          'keyFingerprint', 'ephemeralSeconds', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerId) &&
+        isValidId(data.peerId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+        data.channelScope in ['direct', 'secret_ephemeral', 'community'] &&
+        data.keyFingerprint is string && data.keyFingerprint.size() >= 8 && data.keyFingerprint.size() <= 128 &&
+        data.ephemeralSeconds is int && data.ephemeralSeconds >= 0 && data.ephemeralSeconds <= 604800 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidMessage(data, chatId) {
+      return data.keys().hasAll([
+          'id', 'chatId', 'chatOwnerId', 'chatPeerId', 'chatScope',
+          'senderId', 'senderName', 'ciphertext', 'iv', 'safetyStatus', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'chatId', 'chatOwnerId', 'chatPeerId', 'chatScope',
+          'senderId', 'senderName', 'ciphertext', 'iv', 'safetyStatus', 'safetyReason', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.chatId == chatId &&
+        isValidId(data.chatOwnerId) &&
+        isValidId(data.chatPeerId) &&
+        data.chatScope in ['direct', 'secret_ephemeral', 'community'] &&
+        isValidId(data.senderId) &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 60 &&
+        data.ciphertext is string && data.ciphertext.size() >= 1 && data.ciphertext.size() <= 4000 &&
+        data.iv is string && data.iv.size() >= 4 && data.iv.size() <= 128 &&
+        data.safetyStatus in ['safe', 'warning', 'blocked'] &&
+        (!('safetyReason' in data) || (data.safetyReason is string && data.safetyReason.size() <= 400)) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSafetyReport(data) {
+      return data.keys().hasAll([
+          'id', 'reporterId', 'targetType', 'targetId',
+          'category', 'details', 'authorityRouting',
+          'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'reporterId', 'targetType', 'targetId',
+          'category', 'details', 'authorityRouting',
+          'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.reporterId) &&
+        data.targetType in ['post', 'reel', 'livestream', 'chat_message', 'user', 'emergency_police'] &&
+        data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+        data.category in [
+          'Kinderschutz & Grooming-Verdacht',
+          'Tierschutzverstoß',
+          'Gewalt gegen Frauen oder Männer',
+          'Desinformation & Demokratiegefährdung',
+          '18+ Inhalt im Jugendbereich',
+          'Cybercrime & Akute Gefahrenlage'
+        ] &&
+        data.details is string && data.details.size() >= 5 && data.details.size() <= 2000 &&
+        data.authorityRouting in ['kivora_trust', 'rat_auf_draht_147', 'polizei_133_bkms', 'stopline'] &&
+        data.status in ['submitted', 'escalated', 'resolved'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVerificationRequest(data) {
+      return data.keys().hasAll([
+          'id', 'userId', 'badgeType', 'organizationOrRole',
+          'proofSummary', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'badgeType', 'organizationOrRole',
+          'proofSummary', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        data.badgeType in ['id_austria', 'creator', 'protection_org'] &&
+        data.organizationOrRole is string && data.organizationOrRole.size() >= 2 && data.organizationOrRole.size() <= 120 &&
+        data.proofSummary is string && data.proofSummary.size() >= 5 && data.proofSummary.size() <= 1000 &&
+        data.status in ['pending', 'approved', 'rejected'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSubscription(data) {
+      return data.keys().hasAll([
+          'id', 'userId', 'tier', 'billingCycle',
+          'causeAllocation', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'tier', 'billingCycle',
+          'causeAllocation', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        data.tier in ['free', 'aktiv_verified', 'schutz_pro'] &&
+        data.billingCycle in ['monthly', 'annual'] &&
+        data.causeAllocation in ['Kinderschutz', 'Tierschutz', 'Frauenschutz', 'Männerschutz', 'Krisenvorsorge'] &&
+        data.status in ['active', 'cancelled'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBetaPreregistration(data) {
+      return data.keys().hasAll([
+          'id', 'displayName', 'email', 'focusTopic',
+          'platformInterest', 'dsgvoConsent', 'dsgvoConsentVersion',
+          'status', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'displayName', 'email', 'focusTopic',
+          'platformInterest', 'dsgvoConsent', 'dsgvoConsentVersion',
+          'status', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        (!('userId' in data) || isValidId(data.userId)) &&
+        data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 60 &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 160 &&
+        data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+        data.focusTopic in ['Kinderschutz', 'Tierschutz', 'Frauenschutz', 'Männerschutz', 'Alle Schutzthemen'] &&
+        data.platformInterest in ['Web & PWA', 'iOS', 'Android', 'Alle Plattformen'] &&
+        data.dsgvoConsent == true &&
+        data.dsgvoConsentVersion is string && data.dsgvoConsentVersion.size() >= 2 && data.dsgvoConsentVersion.size() <= 40 &&
+        data.status == 'registered' &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidDatingProfile(data) {
+      return data.keys().hasAll([
+          'id', 'uid', 'displayName', 'handle', 'age', 'city',
+          'bio', 'photoUrl', 'adultAgeConfirmed', 'isActive',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'uid', 'displayName', 'handle', 'age', 'city',
+          'distanceKm', 'bio', 'photoUrl', 'videoHookTitle',
+          'videoFilterPreset', 'tiktokSoundLabel', 'sharedValues',
+          'adultAgeConfirmed', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 60 &&
+        data.handle is string && data.handle.size() >= 2 && data.handle.size() <= 32 &&
+        data.handle.matches('^[a-zA-Z0-9_.]+$') &&
+        data.age is int && data.age >= 18 && data.age <= 99 &&
+        data.city is string && data.city.size() >= 2 && data.city.size() <= 60 &&
+        (!('distanceKm' in data) || (data.distanceKm is int && data.distanceKm >= 1 && data.distanceKm <= 500)) &&
+        data.bio is string && data.bio.size() >= 5 && data.bio.size() <= 400 &&
+        data.photoUrl is string && data.photoUrl.size() >= 1 && data.photoUrl.size() <= 500 &&
+        (!('videoHookTitle' in data) || (data.videoHookTitle is string && data.videoHookTitle.size() <= 140)) &&
+        (!('videoFilterPreset' in data) || (data.videoFilterPreset is string && data.videoFilterPreset.size() <= 60)) &&
+        (!('tiktokSoundLabel' in data) || (data.tiktokSoundLabel is string && data.tiktokSoundLabel.size() <= 120)) &&
+        (!('sharedValues' in data) || (data.sharedValues is list && data.sharedValues.size() <= 6 && (data.sharedValues.size() == 0 || data.sharedValues[0] is string))) &&
+        data.adultAgeConfirmed == true &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidDatingSwipe(data) {
+      return data.keys().hasAll(['id', 'fromUid', 'toProfileId', 'decision', 'sourceMode', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'fromUid', 'toProfileId', 'decision', 'sourceMode', 'createdAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.fromUid) &&
+        isValidId(data.toProfileId) &&
+        data.decision in ['pass', 'like', 'super_like', 'tiktok_match'] &&
+        data.sourceMode in ['tinder_swipe', 'tiktok_video', 'tiktok_live'] &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidDatingMatch(data) {
+      return data.keys().hasAll([
+          'id', 'userAId', 'userBId', 'partnerName', 'partnerHandle',
+          'partnerAge', 'partnerCity', 'partnerPhotoUrl', 'matchOrigin',
+          'compatibilityPct', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userAId', 'userBId', 'partnerName', 'partnerHandle',
+          'partnerAge', 'partnerCity', 'partnerPhotoUrl', 'matchOrigin',
+          'compatibilityPct', 'lastMessagePreview', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.userAId) &&
+        isValidId(data.userBId) &&
+        data.partnerName is string && data.partnerName.size() >= 1 && data.partnerName.size() <= 60 &&
+        data.partnerHandle is string && data.partnerHandle.size() >= 2 && data.partnerHandle.size() <= 32 &&
+        data.partnerAge is int && data.partnerAge >= 18 && data.partnerAge <= 99 &&
+        data.partnerCity is string && data.partnerCity.size() >= 1 && data.partnerCity.size() <= 60 &&
+        data.partnerPhotoUrl is string && data.partnerPhotoUrl.size() >= 1 && data.partnerPhotoUrl.size() <= 500 &&
+        data.matchOrigin in ['tinder_swipe', 'super_like', 'tiktok_video_duet', 'tiktok_live_match'] &&
+        data.compatibilityPct is int && data.compatibilityPct >= 0 && data.compatibilityPct <= 100 &&
+        (!('lastMessagePreview' in data) || (data.lastMessagePreview is string && data.lastMessagePreview.size() <= 240)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidDatingMatchMessage(data, matchId) {
+      return data.keys().hasAll([
+          'id', 'matchId', 'userAId', 'userBId', 'senderId',
+          'senderName', 'text', 'safetyStatus', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'matchId', 'userAId', 'userBId', 'senderId',
+          'senderName', 'text', 'safetyStatus', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.matchId == matchId &&
+        isValidId(data.userAId) &&
+        isValidId(data.userBId) &&
+        isValidId(data.senderId) &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 60 &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 1500 &&
+        data.safetyStatus in ['safe', 'warning', 'blocked'] &&
+        data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // Admins collection (admin-only read/write)
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
+    // Public User Profiles (NO PII)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.idAustriaVerified == true || isAdmin());
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().verifiedBadge == 'none' &&
+        incoming().idAustriaVerified == false &&
+        incoming().ageGroup == 'minor' &&
+        incoming().subscriptionTier == 'free' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          // Action 1: Standard profile metadata update
+          (
+            request.auth.uid == userId &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'handle', 'bio', 'avatarUrl', 'topics', 'updatedAt'])
+          ) ||
+          // Action 2: Atomic ID-Austria eID verification & age-tier check
+          (
+            request.auth.uid == userId &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['idAustriaVerified', 'ageGroup', 'verifiedBadge', 'updatedAt']) &&
+            existsAfter(/databases/$(database)/documents/users/$(userId)/private/identity) &&
+            getAfter(/databases/$(database)/documents/users/$(userId)/private/identity).data.idAustriaBpkHash.size() >= 16 &&
+            (
+              incoming().ageGroup == 'minor' ||
+              (incoming().ageGroup == 'adult' && getAfter(/databases/$(database)/documents/users/$(userId)/private/identity).data.birthYear <= 2008)
+            )
+          ) ||
+          // Action 3: Subscription tier update paired with subscription record
+          (
+            request.auth.uid == userId &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['subscriptionTier', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isAdmin();
+
+      // Strictly isolated PII & DSGVO settings subcollection
+      match /private/{docId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(docId) && (request.auth.uid == userId || isAdmin());
+        allow list: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow create: if isVerifiedAccount() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          request.auth.uid == userId &&
+          isValidPrivateIdentity(incoming()) &&
+          incoming().uid == userId &&
+          incoming().updatedAt == request.time;
+        allow update: if isVerifiedAccount() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          (request.auth.uid == userId || isAdmin()) &&
+          isValidPrivateIdentity(incoming()) &&
+          incoming().uid == existing().uid &&
+          incoming().updatedAt == request.time;
+        allow delete: if isVerifiedAccount() && isValidId(userId) && isValidId(docId) && (request.auth.uid == userId || isAdmin());
+      }
+    }
+
+    // Youth-Safe Public Community Posts
+    match /posts/{postId} {
+      allow get: if isValidId(postId) && resource.data.visibility == 'public' && resource.data.isAdultOnly == false;
+      allow list: if resource.data.visibility == 'public' && resource.data.isAdultOnly == false;
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(postId) &&
+        isValidPost(incoming()) &&
+        incoming().id == postId &&
+        incoming().authorId == request.auth.uid &&
+        incoming().likesCount == 0 &&
+        incoming().commentsCount == 0 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(postId) &&
+        isValidPost(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          // Action: Author edits post content
+          (
+            resource.data.authorId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'topic', 'mediaUrl', 'aiFactNote', 'updatedAt'])
+          ) ||
+          // Action: Community like counter increment
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'updatedAt']) &&
+            incoming().likesCount == existing().likesCount + 1
+          ) ||
+          // Action: Atomic comment counter increment
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount', 'updatedAt']) &&
+            incoming().commentsCount == existing().commentsCount + 1
+          )
+        );
+
+      allow delete: if isVerifiedAccount() && isValidId(postId) && (resource.data.authorId == request.auth.uid || isAdmin());
+
+      // Post Comments Subcollection (Master Gate)
+      match /comments/{commentId} {
+        allow get: if isValidId(postId) && isValidId(commentId);
+        allow list: if resource.data.postId == postId;
+        allow create: if isVerifiedAccount() &&
+          isValidId(postId) &&
+          isValidId(commentId) &&
+          exists(/databases/$(database)/documents/posts/$(postId)) &&
+          isValidComment(incoming(), postId) &&
+          incoming().id == commentId &&
+          incoming().authorId == request.auth.uid &&
+          incoming().createdAt == request.time;
+        allow delete: if isVerifiedAccount() && isValidId(postId) && isValidId(commentId) && (resource.data.authorId == request.auth.uid || isAdmin());
+      }
+    }
+
+    // Short-Form Reels
+    match /reels/{reelId} {
+      allow get: if isValidId(reelId) && resource.data.visibility == 'public' && resource.data.isAdultOnly == false;
+      allow list: if resource.data.visibility == 'public' && resource.data.isAdultOnly == false;
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(reelId) &&
+        isValidReel(incoming()) &&
+        incoming().id == reelId &&
+        incoming().authorId == request.auth.uid &&
+        incoming().likesCount == 0 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(reelId) &&
+        isValidReel(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            resource.data.authorId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'topic', 'filterPreset', 'captionSummary', 'updatedAt'])
+          ) ||
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'updatedAt']) &&
+            incoming().likesCount == existing().likesCount + 1
+          )
+        );
+
+      allow delete: if isVerifiedAccount() && isValidId(reelId) && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    // 24h Ephemeral Stories
+    match /stories/{storyId} {
+      allow get: if isValidId(storyId) && resource.data.visibility == 'public' && resource.data.isAdultOnly == false;
+      allow list: if resource.data.visibility == 'public' && resource.data.isAdultOnly == false;
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(storyId) &&
+        isValidStory(incoming()) &&
+        incoming().id == storyId &&
+        incoming().authorId == request.auth.uid &&
+        incoming().createdAt == request.time;
+
+      allow delete: if isVerifiedAccount() && isValidId(storyId) && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    // Cross-Platform Cloud-Synced Video Editing Projects
+    match /video_projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId) && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(projectId) &&
+        isValidVideoProject(incoming()) &&
+        incoming().id == projectId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(projectId) &&
+        isValidVideoProject(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            resource.data.ownerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'aspectRatio', 'filterPreset', 'filterSettings',
+              'aiRecommendedFilter', 'captions', 'clips', 'exportFormats', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isVerifiedAccount() && isValidId(projectId) && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // End-to-End Encrypted Chats & Civic Action Rooms
+    match /chats/{chatId} {
+      allow get: if isSignedIn() && isValidId(chatId) && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.peerId == request.auth.uid ||
+        resource.data.channelScope == 'community' ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.peerId == request.auth.uid ||
+        resource.data.channelScope == 'community' ||
+        isAdmin()
+      );
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(chatId) &&
+        isValidChat(incoming()) &&
+        incoming().id == chatId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(chatId) &&
+        isValidChat(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            (resource.data.ownerId == request.auth.uid || resource.data.peerId == request.auth.uid) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'ephemeralSeconds', 'keyFingerprint', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isVerifiedAccount() && isValidId(chatId) && (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      // Encrypted Messages Subcollection (Master Gate + Zero-Get List)
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(chatId) && isValidId(messageId) && (
+          resource.data.chatOwnerId == request.auth.uid ||
+          resource.data.chatPeerId == request.auth.uid ||
+          resource.data.chatScope == 'community' ||
+          isAdmin()
+        );
+        allow list: if isSignedIn() && resource.data.chatId == chatId && (
+          resource.data.chatOwnerId == request.auth.uid ||
+          resource.data.chatPeerId == request.auth.uid ||
+          resource.data.chatScope == 'community' ||
+          isAdmin()
+        );
+        allow create: if isVerifiedAccount() &&
+          isValidId(chatId) &&
+          isValidId(messageId) &&
+          exists(/databases/$(database)/documents/chats/$(chatId)) &&
+          isValidMessage(incoming(), chatId) &&
+          get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == incoming().chatOwnerId &&
+          get(/databases/$(database)/documents/chats/$(chatId)).data.peerId == incoming().chatPeerId &&
+          get(/databases/$(database)/documents/chats/$(chatId)).data.channelScope == incoming().chatScope &&
+          (
+            incoming().chatOwnerId == request.auth.uid ||
+            incoming().chatPeerId == request.auth.uid ||
+            incoming().chatScope == 'community'
+          ) &&
+          incoming().id == messageId &&
+          incoming().senderId == request.auth.uid &&
+          incoming().createdAt == request.time;
+        allow delete: if isVerifiedAccount() && isValidId(chatId) && isValidId(messageId) && (resource.data.senderId == request.auth.uid || isAdmin());
+      }
+    }
+
+    // Safety, Grooming, Police & Rat auf Draht Reports
+    match /safety_reports/{reportId} {
+      allow get: if isSignedIn() && isValidId(reportId) && (resource.data.reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.reporterId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(reportId) &&
+        isValidSafetyReport(incoming()) &&
+        incoming().id == reportId &&
+        incoming().reporterId == request.auth.uid &&
+        incoming().status in ['submitted', 'escalated'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(reportId) &&
+        isValidSafetyReport(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().reporterId == existing().reporterId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        existing().status != 'resolved' && (
+          isAdmin() ||
+          (
+            resource.data.reporterId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['details', 'authorityRouting', 'status', 'updatedAt']) &&
+            incoming().status != 'resolved'
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // Verification Badge Requests
+    match /verification_requests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(requestId) &&
+        isValidVerificationRequest(incoming()) &&
+        incoming().id == requestId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isAdmin() &&
+        isValidId(requestId) &&
+        isValidVerificationRequest(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+
+      allow delete: if isVerifiedAccount() && isValidId(requestId) && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Subscription Records
+    match /subscriptions/{subscriptionId} {
+      allow get: if isSignedIn() && isValidId(subscriptionId) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(subscriptionId) &&
+        isValidSubscription(incoming()) &&
+        incoming().id == subscriptionId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'active' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(subscriptionId) &&
+        isValidSubscription(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            resource.data.userId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['tier', 'billingCycle', 'causeAllocation', 'status', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // DSGVO-Compliant Beta Early-Access Pre-Registrations (Strict PII Isolation)
+    match /beta_preregistrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && isValidId(registrationId) && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if isValidId(registrationId) &&
+        isValidBetaPreregistration(incoming()) &&
+        incoming().id == registrationId &&
+        incoming().createdAt == request.time &&
+        (!('userId' in incoming()) || (isSignedIn() && incoming().userId == request.auth.uid));
+
+      allow update, delete: if isAdmin();
+    }
+
+    // Strictly 18+ Verified Adult Dating & TikTok Video-Match Discovery Profiles
+    match /dating_profiles/{profileId} {
+      allow get: if isVerifiedAccount() &&
+        isValidId(profileId) &&
+        isAdultUser() &&
+        (resource.data.isActive == true || resource.data.uid == request.auth.uid || isAdmin());
+
+      allow list: if isVerifiedAccount() &&
+        resource.data.isActive == true &&
+        resource.data.adultAgeConfirmed == true;
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(profileId) &&
+        isValidDatingProfile(incoming()) &&
+        isAdultUser() &&
+        incoming().id == profileId &&
+        incoming().uid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(profileId) &&
+        isValidDatingProfile(incoming()) &&
+        isAdultUser() &&
+        incoming().id == existing().id &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            existing().uid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'handle', 'age', 'city', 'distanceKm', 'bio',
+              'photoUrl', 'videoHookTitle', 'videoFilterPreset', 'tiktokSoundLabel',
+              'sharedValues', 'isActive', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isVerifiedAccount() && isValidId(profileId) && (existing().uid == request.auth.uid || isAdmin());
+    }
+
+    // Immutable 18+ Swipes, Super-Likes & TikTok Match Actions
+    match /dating_swipes/{swipeId} {
+      allow get: if isVerifiedAccount() && isValidId(swipeId) && (resource.data.fromUid == request.auth.uid || isAdmin());
+      allow list: if isVerifiedAccount() && (resource.data.fromUid == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(swipeId) &&
+        isValidDatingSwipe(incoming()) &&
+        isAdultUser() &&
+        incoming().id == swipeId &&
+        incoming().fromUid == request.auth.uid &&
+        incoming().createdAt == request.time;
+
+      allow update, delete: if isAdmin();
+    }
+
+    // Mutual 18+ Matches & Direct Match Chat (Master Gate)
+    match /dating_matches/{matchId} {
+      allow get: if isVerifiedAccount() && isValidId(matchId) && (
+        resource.data.userAId == request.auth.uid ||
+        resource.data.userBId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isVerifiedAccount() && (
+        resource.data.userAId == request.auth.uid ||
+        resource.data.userBId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isVerifiedAccount() &&
+        isValidId(matchId) &&
+        isValidDatingMatch(incoming()) &&
+        isAdultUser() &&
+        incoming().id == matchId &&
+        incoming().userAId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedAccount() &&
+        isValidId(matchId) &&
+        isValidDatingMatch(incoming()) &&
+        isAdultUser() &&
+        incoming().id == existing().id &&
+        incoming().userAId == existing().userAId &&
+        incoming().userBId == existing().userBId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            (existing().userAId == request.auth.uid || existing().userBId == request.auth.uid) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['lastMessagePreview', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isVerifiedAccount() && isValidId(matchId) && (
+        existing().userAId == request.auth.uid ||
+        existing().userBId == request.auth.uid ||
+        isAdmin()
+      );
+
+      match /messages/{messageId} {
+        allow get: if isVerifiedAccount() && isValidId(matchId) && isValidId(messageId) && (
+          resource.data.userAId == request.auth.uid ||
+          resource.data.userBId == request.auth.uid ||
+          isAdmin()
+        );
+        allow list: if isVerifiedAccount() && resource.data.matchId == matchId && (
+          resource.data.userAId == request.auth.uid ||
+          resource.data.userBId == request.auth.uid ||
+          isAdmin()
+        );
+        allow create: if isVerifiedAccount() &&
+          isValidId(matchId) &&
+          isValidId(messageId) &&
+          isAdultUser() &&
+          exists(/databases/$(database)/documents/dating_matches/$(matchId)) &&
+          isValidDatingMatchMessage(incoming(), matchId) &&
+          get(/databases/$(database)/documents/dating_matches/$(matchId)).data.userAId == incoming().userAId &&
+          get(/databases/$(database)/documents/dating_matches/$(matchId)).data.userBId == incoming().userBId &&
+          (incoming().userAId == request.auth.uid || incoming().userBId == request.auth.uid) &&
+          incoming().id == messageId &&
+          incoming().senderId == request.auth.uid &&
+          incoming().createdAt == request.time;
+        allow delete: if isVerifiedAccount() && isValidId(matchId) && isValidId(messageId) && (
+          resource.data.senderId == request.auth.uid ||
+          isAdmin()
+        );
+      }
+    }
+  }
+}

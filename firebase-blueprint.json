@@ -1,0 +1,1240 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public civic and creator profile on KIVORA without PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "handle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_.]+$"
+        },
+        "bio": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 280
+        },
+        "avatarUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "verifiedBadge": {
+          "type": "string",
+          "enum": ["none", "id_austria", "creator", "protection_org"]
+        },
+        "idAustriaVerified": {
+          "type": "boolean"
+        },
+        "ageGroup": {
+          "type": "string",
+          "enum": ["minor", "adult"]
+        },
+        "subscriptionTier": {
+          "type": "string",
+          "enum": ["free", "aktiv_verified", "schutz_pro"]
+        },
+        "topics": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "handle",
+        "verifiedBadge",
+        "idAustriaVerified",
+        "ageGroup",
+        "subscriptionTier",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPrivateIdentity": {
+      "title": "UserPrivateIdentity",
+      "description": "Strictly isolated PII, ID-Austria eID assertion, and GDPR/DSGVO preferences.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160
+        },
+        "idAustriaBpkHash": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "birthYear": {
+          "type": "integer"
+        },
+        "dsgvoConsent": {
+          "type": "boolean"
+        },
+        "dsgvoConsentVersion": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "dsgvoConsentTimestamp": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "analyticsOptIn": {
+          "type": "boolean"
+        },
+        "childSafetyShield": {
+          "type": "boolean"
+        },
+        "protectionFocus": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "birthYear",
+        "dsgvoConsent",
+        "childSafetyShield",
+        "updatedAt"
+      ]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "Youth-safe public community post across civic, protection, and preparedness topics.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "authorHandle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "authorVerified": {
+          "type": "string",
+          "enum": ["none", "id_austria", "creator", "protection_org"]
+        },
+        "topic": {
+          "type": "string",
+          "enum": [
+            "Kinderschutz",
+            "Tierschutz",
+            "Frauenschutz",
+            "Männerschutz",
+            "Politische Aufklärung",
+            "Geopolitik",
+            "Blackout & Krisenvorsorge",
+            "Soziale Gerechtigkeit"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "mediaUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "isAdultOnly": {
+          "type": "boolean"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "likesCount": {
+          "type": "integer"
+        },
+        "commentsCount": {
+          "type": "integer"
+        },
+        "aiFactNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 600
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "authorName",
+        "authorHandle",
+        "authorVerified",
+        "topic",
+        "title",
+        "body",
+        "isAdultOnly",
+        "visibility",
+        "likesCount",
+        "commentsCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PostComment": {
+      "title": "PostComment",
+      "description": "Comment on a community post.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "postId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "postId", "authorId", "authorName", "text", "createdAt"]
+    },
+    "VideoReel": {
+      "title": "VideoReel",
+      "description": "Short vertical video reel with filter preset and synchronized captions.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "coverUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "filterPreset": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "captionSummary": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 600
+        },
+        "isAdultOnly": {
+          "type": "boolean"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "likesCount": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "authorName",
+        "topic",
+        "title",
+        "filterPreset",
+        "isAdultOnly",
+        "visibility",
+        "likesCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StoryItem": {
+      "title": "StoryItem",
+      "description": "24-hour ephemeral community story.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "mediaUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "isAdultOnly": {
+          "type": "boolean"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "authorName",
+        "topic",
+        "headline",
+        "isAdultOnly",
+        "visibility",
+        "createdAt"
+      ]
+    },
+    "VideoProject": {
+      "title": "VideoProject",
+      "description": "Cross-platform cloud-synced video editing project with CapCut-style filters and auto-captions.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "aspectRatio": {
+          "type": "string",
+          "enum": ["9:16", "1:1", "16:9", "4:5"]
+        },
+        "filterPreset": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "filterSettings": {
+          "type": "object",
+          "properties": {
+            "brightness": { "type": "number" },
+            "contrast": { "type": "number" },
+            "saturation": { "type": "number" },
+            "warmth": { "type": "number" },
+            "vignette": { "type": "number" }
+          }
+        },
+        "aiRecommendedFilter": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "captions": {
+          "type": "array"
+        },
+        "clips": {
+          "type": "array"
+        },
+        "exportFormats": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "title",
+        "aspectRatio",
+        "filterPreset",
+        "filterSettings",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EncryptedChat": {
+      "title": "EncryptedChat",
+      "description": "End-to-end encrypted chat thread or civic channel.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "peerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "channelScope": {
+          "type": "string",
+          "enum": ["direct", "secret_ephemeral", "community"]
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "ephemeralSeconds": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "peerId",
+        "title",
+        "channelScope",
+        "keyFingerprint",
+        "ephemeralSeconds",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EncryptedMessage": {
+      "title": "EncryptedMessage",
+      "description": "AES-GCM encrypted message with client-side ciphertext and AI child-safety assessment.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chatId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chatOwnerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chatPeerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chatScope": {
+          "type": "string",
+          "enum": ["direct", "secret_ephemeral", "community"]
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "ciphertext": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "iv": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128
+        },
+        "safetyStatus": {
+          "type": "string",
+          "enum": ["safe", "warning", "blocked"]
+        },
+        "safetyReason": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "chatId",
+        "chatOwnerId",
+        "chatPeerId",
+        "chatScope",
+        "senderId",
+        "senderName",
+        "ciphertext",
+        "iv",
+        "safetyStatus",
+        "createdAt"
+      ]
+    },
+    "SafetyReport": {
+      "title": "SafetyReport",
+      "description": "Child protection, police escalation, Rat auf Draht referral, or content moderation report.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reporterId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["post", "reel", "livestream", "chat_message", "user", "emergency_police"]
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Kinderschutz & Grooming-Verdacht",
+            "Tierschutzverstoß",
+            "Gewalt gegen Frauen oder Männer",
+            "Desinformation & Demokratiegefährdung",
+            "18+ Inhalt im Jugendbereich",
+            "Cybercrime & Akute Gefahrenlage"
+          ]
+        },
+        "details": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000
+        },
+        "authorityRouting": {
+          "type": "string",
+          "enum": ["kivora_trust", "rat_auf_draht_147", "polizei_133_bkms", "stopline"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["submitted", "escalated", "resolved"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "reporterId",
+        "targetType",
+        "targetId",
+        "category",
+        "details",
+        "authorityRouting",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VerificationRequest": {
+      "title": "VerificationRequest",
+      "description": "Request for KIVORA verified badge or organization trust seal.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "badgeType": {
+          "type": "string",
+          "enum": ["id_austria", "creator", "protection_org"]
+        },
+        "organizationOrRole": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "proofSummary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "badgeType",
+        "organizationOrRole",
+        "proofSummary",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SubscriptionRecord": {
+      "title": "SubscriptionRecord",
+      "description": "User subscription tier and social-impact allocation record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["free", "aktiv_verified", "schutz_pro"]
+        },
+        "billingCycle": {
+          "type": "string",
+          "enum": ["monthly", "annual"]
+        },
+        "causeAllocation": {
+          "type": "string",
+          "enum": ["Kinderschutz", "Tierschutz", "Frauenschutz", "Männerschutz", "Krisenvorsorge"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "tier",
+        "billingCycle",
+        "causeAllocation",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BetaPreregistration": {
+      "title": "BetaPreregistration",
+      "description": "DSGVO-compliant early-access Beta waitlist registration.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "focusTopic": {
+          "type": "string",
+          "enum": ["Kinderschutz", "Tierschutz", "Frauenschutz", "Männerschutz", "Alle Schutzthemen"]
+        },
+        "platformInterest": {
+          "type": "string",
+          "enum": ["Web & PWA", "iOS", "Android", "Alle Plattformen"]
+        },
+        "dsgvoConsent": {
+          "type": "boolean"
+        },
+        "dsgvoConsentVersion": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "status": {
+          "type": "string",
+          "enum": ["registered"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "email",
+        "focusTopic",
+        "platformInterest",
+        "dsgvoConsent",
+        "dsgvoConsentVersion",
+        "status",
+        "createdAt"
+      ]
+    },
+    "DatingProfile": {
+      "title": "DatingProfile",
+      "description": "Strictly 18+ ID-Austria verified values-based dating and TikTok short-video profile.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "handle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_.]+$"
+        },
+        "age": {
+          "type": "integer"
+        },
+        "city": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "distanceKm": {
+          "type": "integer"
+        },
+        "bio": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 400
+        },
+        "photoUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "videoHookTitle": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 140
+        },
+        "videoFilterPreset": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 60
+        },
+        "tiktokSoundLabel": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "sharedValues": {
+          "type": "array"
+        },
+        "adultAgeConfirmed": {
+          "type": "boolean"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "uid",
+        "displayName",
+        "handle",
+        "age",
+        "city",
+        "bio",
+        "photoUrl",
+        "adultAgeConfirmed",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DatingSwipe": {
+      "title": "DatingSwipe",
+      "description": "Immutable swipe, super-like, or TikTok match action cast by a verified 18+ adult user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fromUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "toProfileId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "decision": {
+          "type": "string",
+          "enum": ["pass", "like", "super_like", "tiktok_match"]
+        },
+        "sourceMode": {
+          "type": "string",
+          "enum": ["tinder_swipe", "tiktok_video", "tiktok_live"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "fromUid",
+        "toProfileId",
+        "decision",
+        "sourceMode",
+        "createdAt"
+      ]
+    },
+    "DatingMatch": {
+      "title": "DatingMatch",
+      "description": "Mutual match between two verified 18+ adults via Tinder swipe, TikTok video duet, or TikTok Live match.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userAId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userBId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "partnerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "partnerHandle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "partnerAge": {
+          "type": "integer"
+        },
+        "partnerCity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "partnerPhotoUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "matchOrigin": {
+          "type": "string",
+          "enum": ["tinder_swipe", "super_like", "tiktok_video_duet", "tiktok_live_match"]
+        },
+        "compatibilityPct": {
+          "type": "integer"
+        },
+        "lastMessagePreview": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 240
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userAId",
+        "userBId",
+        "partnerName",
+        "partnerHandle",
+        "partnerAge",
+        "partnerCity",
+        "partnerPhotoUrl",
+        "matchOrigin",
+        "compatibilityPct",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DatingMatchMessage": {
+      "title": "DatingMatchMessage",
+      "description": "Direct message inside a mutual 18+ dating match thread with AI safety screening.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "matchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userAId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userBId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "safetyStatus": {
+          "type": "string",
+          "enum": ["safe", "warning", "blocked"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "matchId",
+        "userAId",
+        "userBId",
+        "senderId",
+        "senderName",
+        "text",
+        "safetyStatus",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public user profiles without PII."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateIdentity" },
+      "description": "Private user PII, ID-Austria bPK token, and DSGVO settings."
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/CommunityPost" },
+      "description": "Public youth-safe community feed posts."
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/PostComment" },
+      "description": "Comments on community posts."
+    },
+    "/reels/{reelId}": {
+      "schema": { "$ref": "#/entities/VideoReel" },
+      "description": "Public short-form vertical reels with CapCut filters and auto-captions."
+    },
+    "/stories/{storyId}": {
+      "schema": { "$ref": "#/entities/StoryItem" },
+      "description": "Public 24h ephemeral stories."
+    },
+    "/video_projects/{projectId}": {
+      "schema": { "$ref": "#/entities/VideoProject" },
+      "description": "Owner-private cross-platform cloud-synced video editing projects."
+    },
+    "/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/EncryptedChat" },
+      "description": "End-to-end encrypted chat threads and civic action rooms."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/EncryptedMessage" },
+      "description": "AES-GCM encrypted chat messages with child-safety metadata."
+    },
+    "/safety_reports/{reportId}": {
+      "schema": { "$ref": "#/entities/SafetyReport" },
+      "description": "Safety, grooming, police, and Rat auf Draht escalation reports."
+    },
+    "/verification_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/VerificationRequest" },
+      "description": "Verification badge and ID-Austria trust seal applications."
+    },
+    "/subscriptions/{subscriptionId}": {
+      "schema": { "$ref": "#/entities/SubscriptionRecord" },
+      "description": "Creator and civic supporter subscription records."
+    },
+    "/beta_preregistrations/{registrationId}": {
+      "schema": { "$ref": "#/entities/BetaPreregistration" },
+      "description": "DSGVO-compliant Beta early-access pre-registrations (PII isolated to admin/owner read)."
+    },
+    "/dating_profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/DatingProfile" },
+      "description": "18+ verified adult dating and TikTok video-match discovery profiles."
+    },
+    "/dating_swipes/{swipeId}": {
+      "schema": { "$ref": "#/entities/DatingSwipe" },
+      "description": "Immutable Tinder swipes and TikTok video/live match gestures by verified 18+ adults."
+    },
+    "/dating_matches/{matchId}": {
+      "schema": { "$ref": "#/entities/DatingMatch" },
+      "description": "Mutual matches between verified 18+ adults."
+    },
+    "/dating_matches/{matchId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/DatingMatchMessage" },
+      "description": "Direct messages inside a mutual 18+ match thread."
+    }
+  }
+}
